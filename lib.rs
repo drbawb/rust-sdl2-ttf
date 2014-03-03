@@ -1,17 +1,21 @@
 #[crate_id="github.com/sfackler/rust-sdl_ttf#sdl_ttf:0.0"];
 #[crate_type="lib"];
 
-extern crate sdl;
+extern crate sdl2;
 
 use std::num::FromPrimitive;
 use std::libc::{c_int, c_long};
 use std::str;
 
-use sdl::video::{Color, Surface};
+use sdl2::sdl;
+use sdl2::pixels::{Color,RGB,RGBA};
+use sdl2::surface::Surface;
 
+#[allow(non_camel_case_types)]
 mod ffi {
     use std::libc::{c_int, c_char, c_void, c_long};
-    use sdl::video::ll::{SDL_Color, SDL_Surface};
+    use sdl2::pixels::ll::SDL_Color;
+    use sdl2::surface::ll::SDL_Surface;
 
     pub type TTF_Font = c_void;
 
@@ -28,7 +32,7 @@ mod ffi {
     pub static TTF_HINTING_MONO: TTF_Hinting = 2;
     pub static TTF_HINTING_NONE: TTF_Hinting = 3;
 
-    #[link(name="SDL_ttf")]
+    #[link(name="SDL2_ttf")]
     extern "C" {
         pub fn TTF_Init() -> c_int;
         pub fn TTF_WasInit() -> c_int;
@@ -53,7 +57,7 @@ mod ffi {
         pub fn TTF_FontFaces(font: *TTF_Font) -> c_long;
         pub fn TTF_FontFaceIsFixedWidth(font: *TTF_Font) -> c_int;
         pub fn TTF_FontFaceFamilyName(font: *TTF_Font) -> *c_char;
-        pub fn TTF_FontGlyphIsProvided(font: *TTF_Font, glyph: u16) -> c_int;
+        pub fn TTF_GlyphIsProvided(font: *TTF_Font, glyph: u16) -> c_int;
         pub fn TTF_GlyphMetrics(font: *TTF_Font, glyph: u16, minx: *mut c_int,
             maxx: *mut c_int, miny: *mut c_int, maxy: *mut c_int,
             advance: *mut c_int) -> c_int;
@@ -230,7 +234,7 @@ impl Font {
         };
 
         unsafe {
-            match ffi::TTF_FontGlyphIsProvided(self.raw, ch) {
+            match ffi::TTF_GlyphIsProvided(self.raw, ch) {
                 0 => None,
                 ch => Some(ch as int)
             }
@@ -330,11 +334,18 @@ pub fn open_font_index(file: &str, ptsize: int, index: int)
     })
 }
 
+fn native_color(color: Color) -> sdl2::pixels::ll::SDL_Color {
+	match color {
+		RGB(r,g,b) 	=> sdl2::pixels::ll::SDL_Color { r: r, g: g, b: b, a: 255 },
+		RGBA(r,g,b,a) 	=> sdl2::pixels::ll::SDL_Color {r: r, g: g, b: b, a: a },
+	}
+}
+
 pub fn render_solid(font: &Font, text: &str, fg: Color)
         -> Result<~Surface, ~str> {
     text.with_c_str(|c_text| {
         let ptr = unsafe {
-            ffi::TTF_RenderUTF8_Solid(font.raw, c_text, fg.to_struct())
+            ffi::TTF_RenderUTF8_Solid(font.raw, c_text, native_color(fg))
         };
 
         if ptr.is_null() {
@@ -349,8 +360,8 @@ pub fn render_shaded(font: &Font, text: &str, fg: Color, bg: Color)
         -> Result<~Surface, ~str> {
     text.with_c_str(|c_text| {
         let ptr = unsafe {
-            ffi::TTF_RenderUTF8_Shaded(font.raw, c_text, fg.to_struct(),
-                bg.to_struct())
+            ffi::TTF_RenderUTF8_Shaded(font.raw, c_text, native_color(fg),
+                native_color(bg))
         };
 
         if ptr.is_null() {
@@ -365,7 +376,7 @@ pub fn render_blended(font: &Font, text: &str, fg: Color)
         -> Result<~Surface, ~str> {
     text.with_c_str(|c_text| {
         let ptr = unsafe {
-            ffi::TTF_RenderUTF8_Blended(font.raw, c_text, fg.to_struct())
+            ffi::TTF_RenderUTF8_Blended(font.raw, c_text, native_color(fg))
         };
 
         if ptr.is_null() {
@@ -374,4 +385,9 @@ pub fn render_blended(font: &Font, text: &str, fg: Color)
             Ok(~Surface {raw: ptr, owned: true})
         }
     })
+}
+
+#[test]
+fn should_init() {
+	assert!(init());
 }

@@ -25,11 +25,11 @@ deps:
 	git submodule update --init	
 	mkdir -p lib	
 	rm -f lib/libsdl2*	
-	cd lib/rust-sdl2; make
+	cd lib/rust-sdl2; make clean && make
 	cp lib/rust-sdl2/build/lib/libsdl2* lib/
 
 doc:
 	rustdoc $(LDFLAGS) $(CRATE_ROOT)
 
 clean:
-	rm -f bin/**
+	rm -f build/**
